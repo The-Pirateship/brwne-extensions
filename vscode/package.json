@@ -1,0 +1,101 @@
+{
+  "name": "brwne",
+  "displayName": "brwne",
+  "description": "",
+  "version": "0.0.8",
+  "icon": "assets/brwne.png",
+  "publisher": "pirateship",
+  "engines": {
+    "vscode": "^1.99.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onUri",
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "brwne",
+      "properties": {
+        "brwne.highlightBackgroundColor": {
+          "type": "string",
+          "default": "rgba(120, 120, 120, 0.5)",
+          "description": "The color used for highlighting lines. So please go ahead and change it to your means!",
+          "scope": "resource"
+        },
+        "brwne.highlightBorderColor": {
+          "type": "string",
+          "default": "rgba(120, 120, 120, 0.8)",
+          "description": "The color used for highlighting lines. So please go ahead and change it to your means!",
+          "scope": "resource"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "brwne.helloWorld",
+        "title": "Hello World"
+      },
+      {
+        "command": "brwne.checkUserID",
+        "title": "Check the UID of the currently signed in user"
+      },
+      {
+        "command": "brwne.signIn",
+        "title": "Sign In"
+      },
+      {
+        "command": "brwne.highlightChanges",
+        "title": "Highlight Changes"
+      }
+    ],
+    "authentication": [
+      {
+        "id": "brwne",
+        "label": "Brwne"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run package",
+    "compile": "webpack",
+    "compile:dev": "BRWNE_MODE=dev webpack",
+    "watch": "webpack --watch",
+    "package": "BRWNE_MODE=prod webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "~20.17.30",
+    "@types/vscode": "^1.99.1",
+    "@types/ws": "^8.18.1",
+    "@typescript-eslint/eslint-plugin": "^8.17.0",
+    "@typescript-eslint/parser": "^8.17.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^9.16.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.8.3",
+    "vsce": "^2.15.0",
+    "webpack": "^5.95.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.48.1",
+    "bufferutil": "^4.0.9",
+    "diff": "^7.0.0",
+    "dotenv": "^16.5.0",
+    "fast-diff": "^1.3.0",
+    "firebase": "^11.0.2",
+    "open": "^10.1.0",
+    "utf-8-validate": "^6.0.5",
+    "ws": "^8.18.1"
+  }
+}
