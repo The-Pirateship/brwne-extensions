@@ -1,8 +1,6 @@
 // editorTracker.ts
 import * as vscode from 'vscode';
 import { uploadWorkingChanges } from '../cli-interface/uploadWorkingChanges';
-import { uploadFileState } from '../cli-interface/uploadFileState';
-import { highlightChanges } from '../highlights/highlightChanges';
 import { startPollingForChanges } from '../cli-interface/getChangesToHighlight';
 
 export class EditorTracker {
@@ -36,7 +34,7 @@ export class EditorTracker {
                 const newFile = editor?.document.uri.fsPath;
                 if (this.currentFile !== newFile) {
                     this.currentFile = newFile;
-                    uploadFileState(this.currentFile)
+                    startPollingForChanges(this.currentFile!)
                 }
             })
         );
@@ -61,7 +59,6 @@ export class EditorTracker {
         this.currentFile = vscode.window.activeTextEditor?.document.uri.fsPath;
 
         // send initial state
-        uploadFileState(this.currentFile!)
         startPollingForChanges(this.currentFile!)
     }
 

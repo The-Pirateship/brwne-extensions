@@ -22,7 +22,7 @@ Centralized utility for executing CLI commands and safely parsing their output.
 **Exports:**
 
 - `runBrwneCommand(args: string[]): Promise<any | null>`  
-  Runs a `brwne` CLI command (e.g., `['working-changes', '--commit', 'abc123']`), extracts the first valid JSON line from stdout, and returns the parsed object. Returns `null` on failure or malformed output.
+  Runs a `brwne` CLI command (e.g., `['working-changes']`), extracts the first valid JSON line from stdout, and returns the parsed object. Returns `null` on failure or malformed output.
 
 **Example:**
 
@@ -50,24 +50,6 @@ brwne changes-request --file "path/to/file.ts"
 
 ---
 
-### [`UploadFileState.ts`](./UploadFileState.ts)
-
-**Purpose:**  
-Uploads the current state of a file via the CLI's `file-update` command.
-
-**Exports:**
-
-- `uploadFileState(filepath: string): Promise<void>`  
-  Sends the file path to the CLI, which reads and processes the content. Skips empty paths.
-
-**CLI Equivalent:**
-
-```bash
-brwne file-update "path/to/file.ts"
-```
-
----
-
 ### [`uploadWorkingChanges.ts`](./uploadWorkingChanges.ts)
 
 **Purpose:**  
@@ -76,15 +58,12 @@ Syncs the current working commit ID via the CLI's `working-changes` command.
 **Exports:**
 
 - `uploadWorkingChanges(): Promise<void>`  
-  Computes the current commit ID using `jj` in the extension, then passes it to the CLI.
-
-- `getWorkingCommitID(): Promise<string | null>`  
-  Debounced helper that runs `jj log` to get the current working commit ID.
+  Runs `brwne working-changes` and logs success or failure.
 
 **CLI Equivalent:**
 
 ```bash
-brwne working-changes --commit abc123
+brwne working-changes
 ```
 
 ---
