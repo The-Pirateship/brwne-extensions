@@ -1,35 +1,17 @@
 import * as vscode from 'vscode';
 import { execSync } from 'child_process';
+import { runBrwneCommand } from './cliWrapper';
 
 export async function uploadWorkingChanges() {
-  const wccommitID = await getWorkingCommitID()
-  if (!wccommitID) {
-    console.warn("No valid wccommitID. Skipping WorkingChanges.");
-    return;
-  }
+  const commitID = await getWorkingCommitID();
+  if (!commitID) return;
 
-  const body = {
-    jsonrpc: "2.0",
-    method: "WorkingChangeUpdate",
-    params: { wccommitID },
-    id: Date.now(), // or any unique ID
-  };
+  const result = await runBrwneCommand(['working-changes', '--commit', commitID]);
 
-  try {
-    const res = await fetch(`http://localhost:${process.env.LOCAL_SERVER_PORT}/extcomms`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const errMsg = await res.text();
-      console.warn(`❌ Failed to send WorkingChangeUpdate: ${res.status} - ${errMsg}`);
-    } else {
-      console.log(`📤 Sent working change via JSON-RPC: ${wccommitID}`);
-    }
-  } catch (err) {
-    console.error("❌ Error sending WorkingChangeUpdate:", err);
+  if (result?.status === 'ok') {
+    console.log(`📤 Synced working commit: ${commitID}`);
+  } else {
+    console.warn("⚠️ Failed to sync working commit");
   }
 }
 

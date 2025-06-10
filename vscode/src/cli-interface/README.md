@@ -1,89 +1,108 @@
 # cli-interface
 
-This module provides the interface between a local development extension (e.g., a VS Code extension) and an external local server through JSON-RPC over HTTP. It is responsible for exchanging file-related state and version control data with the external environment. This enables functionalities like change tracking, file syncing, and working copy introspection.
+This module provides the interface between the Brwne VS Code extension and the Brwne CLI (a Go-based binary). It is responsible for invoking CLI commands that handle tasks like syncing file state, tracking working commit changes, and fetching highlightable diffs.
 
 ## Overview
 
-Each file in this folder implements a specific communication task between the extension and a local HTTP server (typically running at `localhost:<LOCAL_SERVER_PORT>/extcomms`), using standardized JSON-RPC 2.0 messages.
+Each file in this folder maps to a specific CLI task — for example, submitting working commit state, pushing file content snapshots, or polling for line-level changes.
 
-These JSON-RPC sync operations are invoked by the `EditorTracker` class in the `triggers` module, which in turn is initialized during extension activation (`extension.ts`). This allows automatic syncing of file states and working changes as the user navigates and edits files.
+The CLI is called via `child_process.exec()` and coordinated through a shared utility: [`cliWrapper.ts`](./cliWrapper.ts). This wrapper runs `brwne` commands, parses their `stdout` output, and returns structured results to the extension code.
+
+These CLI invocations are triggered by the `EditorTracker` class in the `triggers` module, which is initialized during extension activation (`extension.ts`).
 
 ---
 
 ## Modules
 
+### [`cliWrapper.ts`](./cliWrapper.ts)
+
+**Purpose:**  
+Centralized utility for executing CLI commands and safely parsing their output.
+
+**Exports:**
+
+- `runBrwneCommand(args: string[]): Promise<any | null>`  
+  Runs a `brwne` CLI command (e.g., `['working-changes', '--commit', 'abc123']`), extracts the first valid JSON line from stdout, and returns the parsed object. Returns `null` on failure or malformed output.
+
+**Example:**
+
+```ts
+const result = await runBrwneCommand(['file-update', 'src/main.ts']);
+```
+
+---
+
 ### [`getChangesToHighlight.ts`](./getChangesToHighlight.ts)
 
 **Purpose:**  
-Periodically polls for change highlights for a given file. It sends a `ChangesRequest` via JSON-RPC every 5 seconds and logs the response.
+Periodically polls the CLI for change highlights for a specific file, using the `brwne changes-request` command.
 
 **Exports:**
 
 - `startPollingForChanges(filepath: string): NodeJS.Timeout`  
-  Starts polling the server for changes to the specified file and returns the interval timer. This should be used to initiate and maintain a live sync with changes relevant to the file.
+  Begins polling every 5 seconds and logs results to the console.
 
-**Key Implementation Notes:**
+**CLI Equivalent:**
 
-- Uses `setInterval` to repeatedly fetch changes every 5 seconds.
-- Logs errors and results to the console for debugging.
+```bash
+brwne changes-request --file "path/to/file.ts"
+```
 
 ---
 
 ### [`UploadFileState.ts`](./UploadFileState.ts)
 
 **Purpose:**  
-Sends the full current state of a file to the server via a `FileUpdate` JSON-RPC request. This is a one-time operation and is not recurring.
+Uploads the current state of a file via the CLI's `file-update` command.
 
 **Exports:**
 
-- `uploadFileState(file: string): Promise<void>`  
-  Uploads the current state of the given file to the external server. Skips the operation if the file path is missing.
+- `uploadFileState(filepath: string): Promise<void>`  
+  Sends the file path to the CLI, which reads and processes the content. Skips empty paths.
 
-**Key Implementation Notes:**
+**CLI Equivalent:**
 
-- Makes a single HTTP POST request to `/extcomms` with the file payload.
-- Appropriate warnings are logged in the case of errors or invalid input.
+```bash
+brwne file-update "path/to/file.ts"
+```
 
 ---
 
 ### [`uploadWorkingChanges.ts`](./uploadWorkingChanges.ts)
 
 **Purpose:**  
-Synchronizes the current working commit state with the server. This includes extracting the commit ID from a Just/`jj`-based version control system and sending it as a `WorkingChangeUpdate` via JSON-RPC.
+Syncs the current working commit ID via the CLI's `working-changes` command.
 
 **Exports:**
 
 - `uploadWorkingChanges(): Promise<void>`  
-  Retrieves the current working commit ID from `jj` and sends it to the server.
+  Computes the current commit ID using `jj` in the extension, then passes it to the CLI.
 
 - `getWorkingCommitID(): Promise<string | null>`  
-  A debounced version of `WorkingCommitID` that waits for 1 second of inactivity before resolving with the latest commit ID.
+  Debounced helper that runs `jj log` to get the current working commit ID.
 
-**Internal Helpers:**
+**CLI Equivalent:**
 
-- `WorkingCommitID(): string | null`  
-  Synchronously extracts the current commit ID using `jj log -r @`.
-
-**Key Implementation Notes:**
-
-- Relies on VS Code workspace context (`vscode.workspace.workspaceFolders`) to determine the repo path.
-- Includes robust error handling and fallback messaging when `jj` is not installed or the workspace is not initialized.
+```bash
+brwne working-changes --commit abc123
+```
 
 ---
 
 ## Requirements
 
-- A local HTTP server must be running at `http://localhost:$LOCAL_SERVER_PORT/extcomms`.
-- The version control system [`jj`](https://github.com/martinvonz/jj) should be installed and available in the extension's shell environment.
-- Environment variable `LOCAL_SERVER_PORT` must be defined in the process context.
+- `brwne` CLI must be installed and available in your system `PATH`
+- The version control system [`jj`](https://github.com/martinvonz/jj) must be installed
+- All CLI commands must print **only valid JSON** to `stdout`
+- All logs and debug messages from the CLI must go to `stderr` to avoid corrupting JSON parsing
 
 ---
 
 ## Example Use Cases
 
-- Auto-refresh code highlights as the user works on a file.
-- Push working directory changes (e.g., diffs from the VCS) to an external analysis service.
-- Update remote services with the current file state for sync or collaboration purposes.
+- Automatically highlighting lines in the editor that are out of sync or need pulling
+- Keeping track of a user's current working commit state
+- Uploading file snapshots to be diffed or tracked for changes
 
 ---
 

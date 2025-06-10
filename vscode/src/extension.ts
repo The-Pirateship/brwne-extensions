@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import { enableAutoSaveWithDelay } from "./utils/enableAutoSave";
 import { cleanupHighlightListeners, highlightChanges } from "./highlights/highlightChanges";
 import { EditorTracker } from "./triggers/editorTracker";
+import { execSync } from "child_process";
 
 let statusBarItem: vscode.StatusBarItem;
 
@@ -45,7 +46,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
   EditorTracker.getInstance(context);
 
-  vscode.window.showInformationMessage('Connected to the brwne localSever!');
+  try {
+    execSync('brwne --version', { stdio: 'ignore' });
+  } catch {
+    vscode.window.showErrorMessage("Brwne CLI not found. Please install and add to PATH.");
+  }
 
   // Call highlightChanges now, startt polling for changes now
   if (activeEditor) {

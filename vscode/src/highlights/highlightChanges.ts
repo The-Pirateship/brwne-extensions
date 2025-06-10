@@ -149,7 +149,7 @@ export async function highlightChanges(context: ExtensionContext) {
     }
 
     //TODO: GET THE REPO ID FROM WOMEWHERE
-    const repoID =  '991674882' //await getRepoIDFromLocalServer();
+    const repoID =  '991674882'
     if (!repoID) {
         window.showErrorMessage("❌ Failed to connect to repo. Please restart the extension after launching brwne app.");
         return;

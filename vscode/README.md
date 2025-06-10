@@ -14,7 +14,7 @@ The `extension.ts` module defines the activation and deactivation hooks for the 
 - Detects development vs production mode.
 - Enables auto-save.
 - Initializes file tracking and highlighting.
-- Signals connection to the local Brwne server.
+- Signals connection to the CLI
 
 ---
 
@@ -38,10 +38,7 @@ Called automatically by VS Code when the extension is activated.
 4. **Initialize File and Editor Tracking**  
    Calls `EditorTracker.getInstance()` to start watching file and editor changes.
 
-5. **Display Connection Status**  
-   Shows a toast notification confirming successful local server connection.
-
-6. **Trigger Initial Highlighting**  
+5. **Trigger Initial Highlighting**  
    If an editor is already open, immediately highlights changes using `highlightChanges(context)`.
 
 ---

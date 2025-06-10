@@ -1,30 +1,13 @@
-export async function uploadFileState(file: string) {
-  if (!file) {
-    console.warn("No file path provided. Skipping FileUpdate.");
-    return;
-  }
+import { runBrwneCommand } from './cliWrapper';
 
-  const body = {
-    jsonrpc: "2.0",
-    method: "FileUpdate",
-    params: { file },
-    id: Date.now(), // or any unique ID
-  };
+export async function uploadFileState(filepath: string) {
+    if (!filepath) return;
 
-  try {
-    const res = await fetch(`http://localhost:${process.env.LOCAL_SERVER_PORT}/extcomms`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const result = await runBrwneCommand(['file-update', `"${filepath}"`]);
 
-    if (!res.ok) {
-      const errMsg = await res.text();
-      console.warn(`❌ Failed to send FileUpdate: ${res.status} - ${errMsg}`);
+    if (result?.status === 'ok') {
+        console.log(`📤 Synced file state: ${filepath}`);
     } else {
-      console.log(`📤 Sent FileUpdate via HTTP: ${file}`);
+        console.warn("⚠️ Failed to sync file: ", filepath);
     }
-  } catch (err) {
-    console.error("❌ Error sending FileUpdate:", err);
-  }
 }
