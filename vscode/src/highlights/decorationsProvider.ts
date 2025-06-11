@@ -24,12 +24,12 @@ export class DecorationsProvider {
 
     private constructor(context: ExtensionContext) {
         this.gutterDecorationType = window.createTextEditorDecorationType({
-            gutterIconPath: Uri.joinPath(context.extensionUri, 'assets/arrow.png'),
+            gutterIconPath: Uri.joinPath(context.extensionUri, 'assets', 'arrow.png'),
             gutterIconSize: 'cover',
         });
 
         this.pleasePullDecorationType = window.createTextEditorDecorationType({
-            gutterIconPath: Uri.joinPath(context.extensionUri, 'assets/pleasepull.png'),
+            gutterIconPath: Uri.joinPath(context.extensionUri, 'assets' ,'pleasepull.png'),
             gutterIconSize: 'cover'
         });
 

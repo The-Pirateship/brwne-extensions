@@ -1,8 +1,7 @@
 import { ExtensionContext, Range, window, workspace, Position, DecorationRangeBehavior, Disposable } from "vscode";
 import { DecorationsProvider } from "./decorationsProvider";
 import { getModifiedCharRangesFastDiff } from "./charDiffs";
-import getMergeBaseSync from "../utils/mergeBase";
-import { getGitDiffFromGitServer, RepoDiff } from "../GSComms(TBD)/getChangesFromGS";
+import { FileDiff} from "./RepoDiff";
 
 // Global state for persistent listeners and current decorations
 let selectionChangeListener: Disposable | undefined;
@@ -92,7 +91,7 @@ function updateInlineDecorations(editor: any) {
 }
 
 // the decor list is a MAP that persists the decorations that have been set
-export async function highlightChanges(context: ExtensionContext) {
+export async function highlightChanges(context: ExtensionContext, fileDiff: FileDiff) {
     // Debounce rapid successive calls
     const now = Date.now();
     if (now - lastHighlightCallTime < HIGHLIGHT_DEBOUNCE_MS) {
@@ -134,65 +133,6 @@ export async function highlightChanges(context: ExtensionContext) {
         );
         return text.split("\n");
     };
-
-    const currentFileName = workspace.asRelativePath(editor.document.uri, false);
-    const absoluteFsPath = editor.document.uri.fsPath;
-    const rootFsPath = workspace.workspaceFolders?.[0].uri.fsPath;
-    const currFileRelPath = workspace.asRelativePath(editor.document.uri, /* includeWorkspaceFolder */ false);
-
-    console.log("📣 About to call getGitDiffFromGitServer again");
-
-    
-    //implememnting a delay such that if noRepoID happens, it will try again...
-    async function delay(ms: number) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    //TODO: GET THE REPO ID FROM WOMEWHERE
-    const repoID =  '991674882'
-    if (!repoID) {
-        window.showErrorMessage("❌ Failed to connect to repo. Please restart the extension after launching brwne app.");
-        return;
-    }
-
-    // 🟢 Fetch diff data
-    const raw = await getGitDiffFromGitServer({
-        repoID,
-        //TODO: GET THE UID FROM SOMEWHERE
-        UID: '10118039-d4fd-44cc-8cde-620a36b8196a',
-        //TODO: GET THE CLOSEST COMMIT FROM SOMEWHERE
-        userClosestCommit: 'edcb53c3a3a4c047a84d059951b41677c7882c7f',
-        currFilePath: currFileRelPath
-    });
-
-    if (raw === null) {
-        window.showInformationMessage("📦 No diffs available.");
-        // Clear decorations when no diffs
-        currentInlineDecorations = [];
-        return;
-    }
-
-    // assert it's what we expect
-    const data: RepoDiff = raw;
-    if (!data) {
-        window.showInformationMessage("📦 No diffs available.");
-        currentInlineDecorations = [];
-        return;
-    }
-
-    console.log(getMergeBaseSync() as string);
-
-    console.log("📦 Got diff:", data);
-    if (!data) {
-        window.showInformationMessage("📦 No diffs available.");
-        currentInlineDecorations = [];
-        return;
-    }
-
-    const fileDiff = currentFileName ? data[currentFileName] : undefined;
-
-    console.log(currentFileName);
-    console.log(fileDiff);
 
     try {
         // downloading the data from ice cream for which line ranges to highlight

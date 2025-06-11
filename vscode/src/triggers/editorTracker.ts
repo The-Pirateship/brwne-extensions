@@ -1,7 +1,7 @@
 // editorTracker.ts
 import * as vscode from 'vscode';
 import { uploadWorkingChanges } from '../cli-interface/uploadWorkingChanges';
-import { startPollingForChanges } from '../cli-interface/getChangesToHighlight';
+import { startPollingForChanges, stopPollingForChanges } from '../cli-interface/getChangesToHighlight';
 
 export class EditorTracker {
     private static instance: EditorTracker;
@@ -9,7 +9,6 @@ export class EditorTracker {
     private context: vscode.ExtensionContext | undefined;
     private currentFile: string | undefined;
 
-    // getting an instance of out Websocket manager singleton
     private constructor() {
         this.initializeListeners();
     }
@@ -22,44 +21,48 @@ export class EditorTracker {
         return EditorTracker.instance;
     }
 
+    private getRelativePath(uri: vscode.Uri): string {
+        return vscode.workspace.asRelativePath(uri, false);
+    }
+
     private initializeListeners(): void {
 
-        // track active editor changes (user changes what file they are activly editing)
+        // 🔄 track active editor changes
         this.disposables.push(
             vscode.window.onDidChangeActiveTextEditor(editor => {
                 if (!editor) {
                     console.log("Editor is null for a brief moment before changing to different file.");
                     return;
                 }
-                const newFile = editor?.document.uri.fsPath;
-                if (this.currentFile !== newFile) {
-                    this.currentFile = newFile;
-                    startPollingForChanges(this.currentFile!)
+                const newRelPath = this.getRelativePath(editor.document.uri);
+                if (this.currentFile !== newRelPath) {
+                    stopPollingForChanges(this.currentFile!)
+                    this.currentFile = newRelPath;
+                    if (this.context) {
+                        startPollingForChanges(this.currentFile, this.context)
+                    }
                 }
             })
         );
-        // track content changes (typing, deleting, etc.)
+
+        // ⌨️ track content changes
         this.disposables.push(
             vscode.workspace.onDidChangeTextDocument(async event => {
-                // Ignore untitled or virtual docs
-                if (event.document.isUntitled || event.document.uri.scheme !== 'file') {
-                    return;
-                }
+                if (event.document.isUntitled || event.document.uri.scheme !== 'file') return;
+                if (event.contentChanges.length === 0) return;
 
-                // Only send if there are actual content changes
-                if (event.contentChanges.length === 0) {
-                    return;
-                }
-
-                uploadWorkingChanges()
+                uploadWorkingChanges();
             })
         );
 
-        // get initial state
-        this.currentFile = vscode.window.activeTextEditor?.document.uri.fsPath;
-
-        // send initial state
-        startPollingForChanges(this.currentFile!)
+        // 🚀 get initial state
+        const activeEditor = vscode.window.activeTextEditor;
+        if (activeEditor) {
+            this.currentFile = this.getRelativePath(activeEditor.document.uri);
+            if (this.context) {
+                startPollingForChanges(this.currentFile, this.context)
+            }
+        }
     }
 
     public dispose(): void {
