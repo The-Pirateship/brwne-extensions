@@ -16,7 +16,7 @@ export async function runBrwneCommand(args: string[]): Promise<any | null> {
     }
 
     try {
-        const { stdout } = await execAsync(`brwne ${args.join(' ')}`, {
+        const { stdout } = await execAsync(`brd ${args.join(' ')}`, {
             cwd: workspaceRoot,
         });
         // Find the first valid JSON line

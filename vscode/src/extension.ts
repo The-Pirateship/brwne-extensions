@@ -5,9 +5,10 @@ import * as dotenv from "dotenv";
 import * as path from "path";
 import * as fs from 'fs';
 import { enableAutoSaveWithDelay } from "./utils/enableAutoSave";
-import { cleanupHighlightListeners, highlightChanges } from "./highlights/highlightChanges";
+import { cleanupHighlightListeners, initializeHighlightListeners } from "./highlights/highlightChanges";
 import { EditorTracker } from "./triggers/editorTracker";
 import { execSync } from "child_process";
+import { startPollingForChanges } from "./cli-interface/getChangesToHighlight";
 
 let statusBarItem: vscode.StatusBarItem;
 
@@ -47,14 +48,20 @@ export async function activate(context: vscode.ExtensionContext) {
   EditorTracker.getInstance(context);
 
   try {
-    execSync('brwne --version', { stdio: 'ignore' });
+    execSync('brd --version', { stdio: 'ignore' });
   } catch {
     vscode.window.showErrorMessage("Brwne CLI not found. Please install and add to PATH.");
   }
 
-  // Call highlightChanges now, startt polling for changes now
+  //get the current file
+  const currFileRelPath = vscode.workspace.asRelativePath(activeEditor!.document.uri, /* includeWorkspaceFolder */ false);
+
+  //Initilise the Highlighters
+  initializeHighlightListeners(context);
+
+  // startt polling for changes now
   if (activeEditor) {
-    await highlightChanges(context);
+    startPollingForChanges(currFileRelPath, context)
   }
 }
 
