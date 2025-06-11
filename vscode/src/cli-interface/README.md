@@ -1,87 +1,95 @@
-# cli-interface
+# `cli-interface`
 
-This module provides the interface between the Brwne VS Code extension and the Brwne CLI (a Go-based binary). It is responsible for invoking CLI commands that handle tasks like syncing file state, tracking working commit changes, and fetching highlightable diffs.
-
-## Overview
-
-Each file in this folder maps to a specific CLI task — for example, submitting working commit state, pushing file content snapshots, or polling for line-level changes.
-
-The CLI is called via `child_process.exec()` and coordinated through a shared utility: [`cliWrapper.ts`](./cliWrapper.ts). This wrapper runs `brwne` commands, parses their `stdout` output, and returns structured results to the extension code.
-
-These CLI invocations are triggered by the `EditorTracker` class in the `triggers` module, which is initialized during extension activation (`extension.ts`).
+This module connects the Brwne VS Code extension to the Brwne CLI binary. It facilitates communication between the editor and backend tools by invoking CLI commands that return JSON-formatted results. These commands enable features such as diff highlighting, working commit synchronization, and file change polling.
 
 ---
 
-## Modules
+## 📁 Overview
+
+* **Entry point:** [`cliWrapper.ts`](./cliWrapper.ts)
+* **Core function:** Runs CLI commands like `brwne working-changes`, `brwne file-update`, or `brwne changes-request` using `child_process.exec`, then parses and returns their JSON output.
+* **Triggered by:** The extension’s [`EditorTracker`](../triggers/EditorTracker.ts) during activation and editor events.
+
+---
+
+## 📦 Modules
 
 ### [`cliWrapper.ts`](./cliWrapper.ts)
 
-**Purpose:**  
-Centralized utility for executing CLI commands and safely parsing their output.
+**Purpose:**
+Encapsulates the execution of CLI commands and extracts the first valid JSON line from `stdout`.
 
 **Exports:**
 
-- `runBrwneCommand(args: string[]): Promise<any | null>`  
-  Runs a `brwne` CLI command (e.g., `['working-changes']`), extracts the first valid JSON line from stdout, and returns the parsed object. Returns `null` on failure or malformed output.
+* `runBrwneCommand(args: string[]): Promise<any | null>`
+
+  * Accepts CLI arguments (e.g., `['working-changes']`)
+  * Runs `brd` in the workspace root directory
+  * Extracts and parses the first valid JSON output
+  * Logs CLI errors and returns `null` if parsing fails
 
 **Example:**
 
 ```ts
-const result = await runBrwneCommand(['file-update', 'src/main.ts']);
+const result = await runBrwneCommand(['changes-request', '--file', '"src/app.ts"']);
 ```
 
 ---
 
 ### [`getChangesToHighlight.ts`](./getChangesToHighlight.ts)
 
-**Purpose:**  
-Periodically polls the CLI for change highlights for a specific file, using the `brwne changes-request` command.
+**Purpose:**
+Polls for real-time changes to a file using the `brwne changes-request` CLI command.
 
 **Exports:**
 
-- `startPollingForChanges(filepath: string): NodeJS.Timeout`  
-  Begins polling every 5 seconds and logs results to the console.
+* `startPollingForChanges(filepath: string, context: ExtensionContext): Promise<any | null>`
+  Begins polling the CLI every 5 seconds for the given file. The first result is returned immediately; all subsequent results are logged and passed to `highlightChanges`.
+
+* `stopPollingForChanges(filepath: string): void`
+  Clears the polling interval for the given file.
+
+* Internally uses `convertDiff()` to extract `FileDiff` from a full `RepoDiff`.
 
 **CLI Equivalent:**
 
 ```bash
-brwne changes-request --file "path/to/file.ts"
+brd changes-request --file "src/app.ts"
 ```
 
 ---
 
 ### [`uploadWorkingChanges.ts`](./uploadWorkingChanges.ts)
 
-**Purpose:**  
-Syncs the current working commit ID via the CLI's `working-changes` command.
+**Purpose:**
+Pushes the current working commit’s state to the Brwne backend.
 
 **Exports:**
 
-- `uploadWorkingChanges(): Promise<void>`  
-  Runs `brwne working-changes` and logs success or failure.
+* `uploadWorkingChanges(): Promise<void>`
+  Runs `brd working-changes` and logs the result.
 
 **CLI Equivalent:**
 
 ```bash
-brwne working-changes
+brd working-changes
 ```
 
 ---
 
-## Requirements
+## ✅ Requirements
 
-- `brwne` CLI must be installed and available in your system `PATH`
-- The version control system [`jj`](https://github.com/martinvonz/jj) must be installed
-- All CLI commands must print **only valid JSON** to `stdout`
-- All logs and debug messages from the CLI must go to `stderr` to avoid corrupting JSON parsing
+Ensure the following are available:
 
----
-
-## Example Use Cases
-
-- Automatically highlighting lines in the editor that are out of sync or need pulling
-- Keeping track of a user's current working commit state
-- Uploading file snapshots to be diffed or tracked for changes
+* ✅ `brwne` CLI is installed and in your system `PATH`
+* ✅ [Jujutsu (jj)](https://github.com/martinvonz/jj) version control system is installed
+* ✅ All CLI commands must output **only valid JSON** to `stdout`
+* ✅ All debug or logging output must go to `stderr` to avoid interfering with JSON parsing
 
 ---
 
+## 💡 Use Cases
+
+* 🖍️ Automatically highlight modified lines in the editor based on CLI diff output
+* 📄 Keep the working commit state synchronized with the backend
+* 🔁 Periodically fetch live changes to files for real-time collaboration or syncing
