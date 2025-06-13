@@ -7,7 +7,7 @@ This module connects the Brwne VS Code extension to the Brwne CLI binary. It fac
 ## 📁 Overview
 
 * **Entry point:** [`cliWrapper.ts`](./cliWrapper.ts)
-* **Core function:** Runs CLI commands like `brwne working-changes`, `brwne file-update`, or `brwne changes-request` using `child_process.exec`, then parses and returns their JSON output.
+* **Core function:** Runs CLI commands like `br working-changes`, or `br changes-request` using `child_process.exec`, then parses and returns their JSON output.
 * **Triggered by:** The extension’s [`EditorTracker`](../triggers/EditorTracker.ts) during activation and editor events.
 
 ---
@@ -18,28 +18,14 @@ This module connects the Brwne VS Code extension to the Brwne CLI binary. It fac
 
 **Purpose:**
 Encapsulates the execution of CLI commands and extracts the first valid JSON line from `stdout`.
-
-**Exports:**
-
-* `runBrwneCommand(args: string[]): Promise<any | null>`
-
-  * Accepts CLI arguments (e.g., `['working-changes']`)
-  * Runs `brd` in the workspace root directory
-  * Extracts and parses the first valid JSON output
-  * Logs CLI errors and returns `null` if parsing fails
-
-**Example:**
-
-```ts
-const result = await runBrwneCommand(['changes-request', '--file', '"src/app.ts"']);
-```
+BRWNE_MODE determines if the CLI is in development mode `brd` or production `br`.
 
 ---
 
 ### [`getChangesToHighlight.ts`](./getChangesToHighlight.ts)
 
 **Purpose:**
-Polls for real-time changes to a file using the `brwne changes-request` CLI command.
+Polls for real-time changes to a file using the `br changes-request` CLI command.
 
 **Exports:**
 
@@ -67,7 +53,7 @@ Pushes the current working commit’s state to the Brwne backend.
 **Exports:**
 
 * `uploadWorkingChanges(): Promise<void>`
-  Runs `brd working-changes` and logs the result.
+  Runs `br working-changes` and logs the result.
 
 **CLI Equivalent:**
 

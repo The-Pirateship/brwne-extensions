@@ -10,8 +10,7 @@ This is the main entry point of the Brwne VS Code extension. It orchestrates ext
 
 The `extension.ts` module defines the activation and deactivation hooks for the Brwne extension. It serves as the central bootstrapping logic that:
 
-* Loads environment configuration.
-* Detects development vs production mode.
+* Loads BRWNE MODE to decide if br or brd should be used
 * Enables auto-save.
 * Initializes file tracking and highlighting.
 * Signals connection to the CLI
@@ -26,23 +25,20 @@ Called automatically by VS Code when the extension is activated.
 
 **Responsibilities:**
 
-1. **Identify Extension Mode**
-   Determines whether the extension is running in development (`pirateship-dev.brwne-dev`) or production (`pirateship.brwne`) based on the extension ID and `BRWNE_MODE` environment variable.
+1. **Identify Brwne Mode**
+   Determines whether the CLI is running in development (`brd`) or production (`br`) based on the `BRWNE_MODE` environment variable. This is for the cli interface.
 
-2. **Load Environment Configuration**
-   Loads `.env` or `.env.dev` using `dotenv`, depending on mode.
-
-3. **Enable Auto-Save**
+2. **Enable Auto-Save**
    Ensures VS Code is set to auto-save after a 1-second delay using `enableAutoSaveWithDelay()`.
 
-4. **Initialize File and Editor Tracking**
+3. **Initialize File and Editor Tracking**
    Calls `EditorTracker.getInstance()` to start watching file and editor changes.
 
-5. **Trigger Initial Highlighting**
+4. **Trigger Initial Highlighting**
    Initializes highlighting system and calls `startPollingForChanges()` on the active file.
 
-6. **Check CLI Availability**
-   Executes `brd --version` to confirm Brwne CLI is available. Warns the user if not.
+5. **Check CLI Availability**
+   Executes `brd/br --version` to confirm Brwne CLI is available. Warns the user if not.
 
 ---
 
@@ -52,12 +48,6 @@ Called automatically by VS Code when the extension is activated.
 
 Cleans up persistent listeners related to highlighting using `cleanupHighlightListeners()`.
 
----
-
-## ⚙️ Environment Setup
-
-* `.env` or `.env.dev` files are expected in the root directory above `dist/`.
-* Environment files are loaded conditionally depending on `BRWNE_MODE`.
 
 ---
 
@@ -76,7 +66,7 @@ This file coordinates functionality from several key subsystems:
 
 When the Brwne extension activates:
 
-1. It reads the correct `.env` config.
+1. It decides the brwne commands to use `[br or brd]`.
 2. Sets VS Code to auto-save every 1 second.
 3. Tracks user file activity to sync state.
 4. Highlights edits and collaborative changes in real-time.
