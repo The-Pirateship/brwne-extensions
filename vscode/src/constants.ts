@@ -1,0 +1,1 @@
+export const brcmd = 'br' //remember to change it here for dev/prod

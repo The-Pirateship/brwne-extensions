@@ -6,6 +6,7 @@ import { cleanupHighlightListeners, initializeHighlightListeners } from "./highl
 import { EditorTracker } from "./triggers/editorTracker";
 import { execSync } from "child_process";
 import { startPollingForChanges } from "./cli-interface/getChangesToHighlight";
+import { brcmd } from "./constants";
 
 // This method is called when the brwne extension is activated on VSCode
 export async function activate(context: vscode.ExtensionContext) {
@@ -15,9 +16,6 @@ export async function activate(context: vscode.ExtensionContext) {
   const activeEditor = vscode.window.activeTextEditor;
 
   EditorTracker.getInstance(context);
-
-  //TODO: Is it undefined???
-  const brcmd = process.env.BRWNE_MODE === 'prod' ? 'br' : 'brd';
 
   try {
     execSync(`${brcmd}`, { stdio: 'ignore' });

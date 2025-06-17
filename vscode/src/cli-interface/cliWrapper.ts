@@ -1,6 +1,7 @@
 import { exec } from 'child_process';
 import * as util from 'util';
 import { workspace } from 'vscode';
+import { brcmd } from '../constants';
 
 const execAsync = util.promisify(exec);
 
@@ -16,7 +17,6 @@ export async function runBrwneCommand(args: string[]): Promise<any | null> {
     }
 
     try {
-        const brcmd = process.env.BRWNE_MODE === 'prod' ? 'br' : 'brd';
         const { stdout } = await execAsync(`${brcmd} ${args.join(' ')}`, {
             cwd: workspaceRoot,
         });
