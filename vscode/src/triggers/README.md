@@ -32,7 +32,7 @@ Watches for changes in the active editor and the contents of open files, and dis
   * Starts polling for the new file via `startPollingForChanges`
 
 * **Track Content Changes**
-  On every document edit (typing, deleting, etc.), the tracker triggers `uploadWorkingChanges` to keep the backend or CLI aware of recent modifications.
+  On every document save, the tracker triggers `uploadWorkingChanges` to keep the backend or CLI aware of recent modifications.
 
 * **Initial Bootstrapping**
   Upon activation, it immediately:

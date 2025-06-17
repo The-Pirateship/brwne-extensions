@@ -20,7 +20,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const brcmd = process.env.BRWNE_MODE === 'prod' ? 'br' : 'brd';
 
   try {
-    execSync(`${brcmd} --version`, { stdio: 'ignore' });
+    execSync(`${brcmd}`, { stdio: 'ignore' });
   } catch {
     vscode.window.showErrorMessage("Brwne CLI not found. Please install and add to PATH.");
   }
