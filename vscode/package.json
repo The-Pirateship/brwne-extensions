@@ -2,9 +2,14 @@
   "name": "brwne",
   "displayName": "brwne",
   "description": "",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "icon": "assets/brwne.png",
   "publisher": "pirateship",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/The-Pirateship/brwne-extensions.git",
+    "directory": "vscode"
+  },
   "engines": {
     "vscode": "^1.99.0"
   },
