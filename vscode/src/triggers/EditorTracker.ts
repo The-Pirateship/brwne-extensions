@@ -1,10 +1,10 @@
 // editorTracker.ts
 import * as vscode from "vscode";
-import { uploadWorkingChanges } from "../cli-interface/uploadWorkingChanges";
+import { uploadWorkingChanges } from "../cliInterface/uploadWorkingChanges";
 import {
     startPollingForChanges,
     stopPollingForChanges,
-} from "../cli-interface/getChangesToHighlight";
+} from "../cliInterface/getChangesToHighlight";
 
 export class EditorTracker {
     private static instance: EditorTracker;

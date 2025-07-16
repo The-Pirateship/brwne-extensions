@@ -1,5 +1,5 @@
 import { ExtensionContext, Range, window, workspace, Position, DecorationRangeBehavior, Disposable } from "vscode";
-import { DecorationsProvider } from "./decorationsProvider";
+import { DecorationsProvider } from "./DecorationsProvider";
 import { getModifiedCharRangesFastDiff } from "./charDiffs";
 import { FileDiff} from "./RepoDiff";
 

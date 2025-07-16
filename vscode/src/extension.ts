@@ -3,9 +3,9 @@
 import * as vscode from "vscode";
 import { enableAutoSaveWithDelay } from "./utils/enableAutoSave";
 import { cleanupHighlightListeners, initializeHighlightListeners } from "./highlights/highlightChanges";
-import { EditorTracker } from "./triggers/editorTracker";
+import { EditorTracker } from "./triggers/EditorTracker";
 import { execSync } from "child_process";
-import { startPollingForChanges } from "./cli-interface/getChangesToHighlight";
+import { startPollingForChanges } from "./cliInterface/getChangesToHighlight";
 import { brcmd } from "./constants";
 
 // This method is called when the brwne extension is activated on VSCode
