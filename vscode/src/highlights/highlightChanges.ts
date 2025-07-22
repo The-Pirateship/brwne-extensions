@@ -194,7 +194,7 @@ export async function highlightChanges(context: ExtensionContext, fileDiff: File
                         endLine = startLine + item.Lines.NewLineCount - 1;
                     }
                     else {
-                        endLine = startLine + item.Lines.OldLineCount - item.Lines.NewLineCount - 1;
+                        endLine = Math.abs(startLine + item.Lines.OldLineCount - item.Lines.NewLineCount);
                     }
                     if (startLine < 0 || endLine >= editor.document.lineCount) {
                         console.error(`Invalid line range for pleasePull: ${startLine}-${endLine}`);
@@ -221,9 +221,9 @@ export async function highlightChanges(context: ExtensionContext, fileDiff: File
                     endLine = startLine + item.Lines.NewLineCount - 1;
                 }
                 else {
-                    endLine = startLine + item.Lines.OldLineCount - item.Lines.NewLineCount - 1;
+                    endLine = Math.abs(startLine + item.Lines.OldLineCount - item.Lines.NewLineCount);
                 }
-                console.log("this is my ednlien: ", endLine);
+                console.log("this is my endline: ", endLine);
 
                 // Fetch only the necessary lines from the editor
                 const editorContent = await editorContentLines(startLine, endLine);
@@ -310,11 +310,12 @@ export async function highlightChanges(context: ExtensionContext, fileDiff: File
                     console.log("this isnt a please pull: ", item);
                     const startLine = item.Lines.OldStart - 1; // Convert to 0-based index
                     var endLine = 0;
+                    //no new lines added/deleted
                     if (item.Lines.NewLineCount === item.Lines.OldLineCount) {
                         endLine = startLine + item.Lines.NewLineCount - 1;
                     }
                     else {
-                        endLine = startLine + item.Lines.OldLineCount - item.Lines.NewLineCount;
+                        endLine = Math.abs(startLine + item.Lines.OldLineCount - item.Lines.NewLineCount);
                     }
 
                     if (startLine < 0 || endLine >= editor.document.lineCount) {
