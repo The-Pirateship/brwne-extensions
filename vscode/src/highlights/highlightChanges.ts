@@ -1,4 +1,4 @@
-import { ExtensionContext, Range, window, workspace, Position, DecorationRangeBehavior, Disposable } from "vscode";
+import { ExtensionContext, Range, window, workspace, Position, DecorationRangeBehavior, Disposable, Hover, MarkdownString, TextDocument, CancellationToken, HoverProvider } from "vscode";
 import { DecorationsProvider } from "./DecorationsProvider";
 import { getModifiedCharRangesFastDiff } from "./charDiffs";
 import { FileDiff} from "./RepoDiff";
@@ -14,6 +14,44 @@ let currentInlineDecorations: any[] = [];
 let currentEditor: any = null;
 let lastCursorLine = -1;
 let globalContext: ExtensionContext;
+let currentFileDiff: FileDiff | null = null;
+
+// Hover provider
+export class ChangesHoverProvider implements HoverProvider {
+    provideHover(
+        document: TextDocument,
+        position: Position,
+        token: CancellationToken
+    ): Hover | undefined {
+        if (!currentFileDiff || !currentFileDiff.hunks) {
+            return;
+        }
+
+        const hoverLine = position.line;
+        for (const hunk of currentFileDiff.hunks) {
+            const startLine = hunk.Lines.OldStart - 1;
+            const endLine = startLine + hunk.Lines.OldLineCount -1;
+
+            if (hoverLine >= startLine && hoverLine <= endLine) {
+                const oldLines = hunk.ContentOld.split('\n').filter(line => line);
+                const newLines = hunk.ContentNew.split('\n').filter(line => line);
+
+                let diff = '';
+                if (oldLines.length > 0) {
+                    diff += oldLines.map(line => `- ${line}`).join('\n');
+                }
+                if (newLines.length > 0) {
+                    if (diff) diff += '\n';
+                    diff += newLines.map(line => `+ ${line}`).join('\n');
+                }
+                
+                const content = new MarkdownString();
+                content.appendCodeblock(diff, 'diff');
+                return new Hover(content, new Range(startLine, 0, endLine, 0));
+            }
+        }
+    }
+}
 
 // Initialize persistent listeners - call this once during extension activation
 export function initializeHighlightListeners(context: ExtensionContext) {
@@ -100,6 +138,8 @@ export async function highlightChanges(context: ExtensionContext, fileDiff: File
     }
     lastHighlightCallTime = now;
 
+    currentFileDiff = fileDiff;
+
     const decorations = DecorationsProvider.getInstance(context);
 
     // exiting if theres no active editor
@@ -137,16 +177,44 @@ export async function highlightChanges(context: ExtensionContext, fileDiff: File
     try {
         // downloading the data from ice cream for which line ranges to highlight
         let LineRangesToHighlight: any[] = [];
-        if (fileDiff) {
+        if (fileDiff && fileDiff.hunks) {
             LineRangesToHighlight = fileDiff.hunks;
         }
 
         console.log("theese are the line ranges: ", LineRangesToHighlight);
 
         let pleasePullRanges: Range[] = [];
-        for (const item of LineRangesToHighlight) {
-            console.log(item);
-            if (item.PleasePull) {
+        if (LineRangesToHighlight) {
+            for (const item of LineRangesToHighlight) {
+                console.log(item);
+                if (item.PleasePull) {
+                    const startLine = item.Lines.OldStart - 1; // Convert to 0-based index
+                    var endLine = 0;
+                    if (item.Lines.NewLineCount === item.Lines.OldLineCount) {
+                        endLine = startLine + item.Lines.NewLineCount - 1;
+                    }
+                    else {
+                        endLine = startLine + item.Lines.OldLineCount - item.Lines.NewLineCount - 1;
+                    }
+                    if (startLine < 0 || endLine >= editor.document.lineCount) {
+                        console.error(`Invalid line range for pleasePull: ${startLine}-${endLine}`);
+                        continue;
+                    }
+
+                    for (let line = startLine; line <= endLine; line++) {
+                        const lineTextLength = editor.document.lineAt(line).text.length;
+                        pleasePullRanges.push(new Range(line, 0, line, lineTextLength));
+                        console.log("knnccb: ", pleasePullRanges);
+                    }
+                }
+            }
+        }
+
+
+        // ### LOGIC FOR CONFLICT RANGES
+        let conflictRanges: Range[] = [];
+        if (LineRangesToHighlight) {
+            for (const item of LineRangesToHighlight) {
                 const startLine = item.Lines.OldStart - 1; // Convert to 0-based index
                 var endLine = 0;
                 if (item.Lines.NewLineCount === item.Lines.OldLineCount) {
@@ -155,100 +223,78 @@ export async function highlightChanges(context: ExtensionContext, fileDiff: File
                 else {
                     endLine = startLine + item.Lines.OldLineCount - item.Lines.NewLineCount - 1;
                 }
-                if (startLine < 0 || endLine >= editor.document.lineCount) {
-                    console.error(`Invalid line range for pleasePull: ${startLine}-${endLine}`);
-                    continue;
+                console.log("this is my ednlien: ", endLine);
+
+                // Fetch only the necessary lines from the editor
+                const editorContent = await editorContentLines(startLine, endLine);
+                console.log("this is the editor content: ", editorContent, startLine, endLine);
+                const oldContentLines = item.ContentOld.split("\n");
+
+                for (let i = 0; i < oldContentLines.length && i < editorContent.length; i++) {
+                    const currLineNum = startLine + i;
+                    const oldLine = oldContentLines[i];
+                    const editorLine = editorContent[i];
+
+                    if (editorLine !== oldLine) {
+                        const newRanges = getModifiedCharRangesFastDiff(currLineNum, oldLine, editorLine);
+                        conflictRanges.push(...newRanges);
+                    }
                 }
 
-                for (let line = startLine; line <= endLine; line++) {
-                    const lineTextLength = editor.document.lineAt(line).text.length;
-                    pleasePullRanges.push(new Range(line, 0, line, lineTextLength));
-                    console.log("knnccb: ", pleasePullRanges);
-                }
             }
-        }
-
-
-        // ### LOGIC FOR CONFLICT RANGES
-        let conflictRanges: Range[] = [];
-        for (const item of LineRangesToHighlight) {
-            const startLine = item.Lines.OldStart - 1; // Convert to 0-based index
-            var endLine = 0;
-            if (item.Lines.NewLineCount === item.Lines.OldLineCount) {
-                endLine = startLine + item.Lines.NewLineCount - 1;
-            }
-            else {
-                endLine = startLine + item.Lines.OldLineCount - item.Lines.NewLineCount - 1;
-            }
-            console.log("this is my ednlien: ", endLine);
-
-            // Fetch only the necessary lines from the editor
-            const editorContent = await editorContentLines(startLine, endLine);
-            console.log("this is the editor content: ", editorContent, startLine, endLine);
-            const oldContentLines = item.ContentOld.split("\n");
-
-            for (let i = 0; i < oldContentLines.length && i < editorContent.length; i++) {
-                const currLineNum = startLine + i;
-                const oldLine = oldContentLines[i];
-                const editorLine = editorContent[i];
-
-                if (editorLine !== oldLine) {
-                    const newRanges = getModifiedCharRangesFastDiff(currLineNum, oldLine, editorLine);
-                    conflictRanges.push(...newRanges);
-                }
-            }
-
         }
 
         console.log(conflictRanges, ": printed conflict ranges");
 
         // ### LOGIC FOR INLINE DECORATION RANGES
         let inlineDecorationOptionsLst = [];
-        // iterating through each chunk of changes
-        for (let index = 0; index < LineRangesToHighlight.length; index++) {
+        if (LineRangesToHighlight) {
+            // iterating through each chunk of changes
+            for (let index = 0; index < LineRangesToHighlight.length; index++) {
 
-            const currentRange = LineRangesToHighlight[index];
-            const lineNum = currentRange.Lines.OldStart - 1; // zero indexed
-            const endLineNum = lineNum + currentRange.Lines.OldLineCount - 1;
+                const currentRange = LineRangesToHighlight[index];
+                const lineNum = currentRange.Lines.OldStart - 1; // zero indexed
+                const endLineNum = lineNum + currentRange.Lines.OldLineCount - 1;
 
-            // calculating the max line length
-            let maxLineLength = 0;
-            for (let currLine = lineNum; currLine <= endLineNum; currLine++) {
-                const currLen = editor.document.lineAt(currLine).text.length;
-                if (currLen > maxLineLength) {
-                    maxLineLength = currLen;
+                // calculating the max line length
+                let maxLineLength = 0;
+                for (let currLine = lineNum; currLine <= endLineNum; currLine++) {
+                    const currLen = editor.document.lineAt(currLine).text.length;
+                    if (currLen > maxLineLength) {
+                        maxLineLength = currLen;
+                    }
                 }
-            }
 
-            // creating a decoration for each line in this chunk
-            for (let currLine = lineNum; currLine <= endLineNum; currLine++) {
+                // creating a decoration for each line in this chunk
+                for (let currLine = lineNum; currLine <= endLineNum; currLine++) {
 
-                const currLineLength = editor.document.lineAt(currLine).text.length;
-                if (currentRange.PleasePull) {
-                    console.log("🏖️ decorating pp inline: ", currentRange);
-                    inlineDecorationOptionsLst.push({
-                        range: new Range(currLine, currLineLength, currLine, currLineLength),
-                        renderOptions: {
-                            rangeBehavior: DecorationRangeBehavior.OpenOpen,
-                            after: {
-                                contentText: `\u00A0please pull, "${currentRange.Branch}" has updates\u00A0`,
-                                margin: `0 0 0 ${Math.max(1, maxLineLength - currLineLength)}ch`,
+                    const currLineLength = editor.document.lineAt(currLine).text.length;
+                    if (currentRange.PleasePull) {
+                        console.log("🏖️ decorating pp inline: ", currentRange);
+                        inlineDecorationOptionsLst.push({
+                            range: new Range(currLine, currLineLength, currLine, currLineLength),
+                            renderOptions: {
+                                rangeBehavior: DecorationRangeBehavior.OpenOpen,
+                                after: {
+                                    contentText: `\u00A0please pull, "${currentRange.Branch}" has updates\u00A0`,
+                                    margin: `0 0 0 ${Math.max(1, maxLineLength - currLineLength)}ch`,
+                                },
                             },
-                        },
-                    });
-                } else {
-                    console.log("🏖️ decorating inline");
-                    inlineDecorationOptionsLst.push({
-                        range: new Range(currLine, currLineLength, currLine, currLineLength),
-                        renderOptions: {
-                            rangeBehavior: DecorationRangeBehavior.OpenOpen,
-                            after: {
-                                contentText: `\u00A0@${currentRange.Author} is currently editing this line\u00A0`,
-                                margin: `0 0 0 ${Math.max(1, maxLineLength - currLineLength)}ch`,
-                                fontStyle: 'italic',
-                            }
-                        },
-                    });
+                        });
+                    } else {
+                        console.log("🏖️ decorating inline");
+                        inlineDecorationOptionsLst.push({
+                            range: new Range(currLine, currLineLength, currLine, currLineLength),
+                            renderOptions: {
+                                rangeBehavior: DecorationRangeBehavior.OpenOpen,
+                                after: {
+                                    contentText: `\u00A0@${currentRange.Author} is currently editing this line\u00A0`,
+                                    margin: `0 0 0 ${Math.max(1, maxLineLength - currLineLength)}ch`,
+                                    fontStyle: 'italic',
+                                }
+                            },
+                        });
+                    }
                 }
             }
         }
@@ -258,26 +304,28 @@ export async function highlightChanges(context: ExtensionContext, fileDiff: File
 
         // ### LOGIC FOR GUTTER DECORATION RANGES
         let gutterDecorationRanges = [];
-        for (const item of LineRangesToHighlight) {
-            if (!item.PleasePull) {
-                console.log("this isnt a please pull: ", item);
-                const startLine = item.Lines.OldStart - 1; // Convert to 0-based index
-                var endLine = 0;
-                if (item.Lines.NewLineCount === item.Lines.OldLineCount) {
-                    endLine = startLine + item.Lines.NewLineCount - 1;
-                }
-                else {
-                    endLine = startLine + item.Lines.OldLineCount - item.Lines.NewLineCount;
-                }
+        if (LineRangesToHighlight) {
+            for (const item of LineRangesToHighlight) {
+                if (!item.PleasePull) {
+                    console.log("this isnt a please pull: ", item);
+                    const startLine = item.Lines.OldStart - 1; // Convert to 0-based index
+                    var endLine = 0;
+                    if (item.Lines.NewLineCount === item.Lines.OldLineCount) {
+                        endLine = startLine + item.Lines.NewLineCount - 1;
+                    }
+                    else {
+                        endLine = startLine + item.Lines.OldLineCount - item.Lines.NewLineCount;
+                    }
 
-                if (startLine < 0 || endLine >= editor.document.lineCount) {
-                    console.error(`Invalid line range: ${startLine}-${endLine}`);
-                    continue;
-                }
+                    if (startLine < 0 || endLine >= editor.document.lineCount) {
+                        console.error(`Invalid line range: ${startLine}-${endLine}`);
+                        continue;
+                    }
 
-                for (let line = startLine; line <= endLine; line++) {
-                    const lineTextLength = editor.document.lineAt(line).text.length;
-                    gutterDecorationRanges.push(new Range(line, 0, line, lineTextLength));
+                    for (let line = startLine; line <= endLine; line++) {
+                        const lineTextLength = editor.document.lineAt(line).text.length;
+                        gutterDecorationRanges.push(new Range(line, 0, line, lineTextLength));
+                    }
                 }
             }
         }

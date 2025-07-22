@@ -2,7 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 import { enableAutoSaveWithDelay } from "./utils/enableAutoSave";
-import { cleanupHighlightListeners, initializeHighlightListeners } from "./highlights/highlightChanges";
+import { ChangesHoverProvider, cleanupHighlightListeners, initializeHighlightListeners } from "./highlights/highlightChanges";
 import { EditorTracker } from "./triggers/EditorTracker";
 import { execSync } from "child_process";
 import { startPollingForChanges } from "./cliInterface/getChangesToHighlight";
@@ -26,8 +26,13 @@ export async function activate(context: vscode.ExtensionContext) {
   //get the current file
   const currFileRelPath = vscode.workspace.asRelativePath(activeEditor!.document.uri, /* includeWorkspaceFolder */ false);
 
-  //Initilise the Highlighters
+  //Initialise the Highlighters
   initializeHighlightListeners(context);
+  
+  // Register the hover provider
+  context.subscriptions.push(
+    vscode.languages.registerHoverProvider({ scheme: 'file' }, new ChangesHoverProvider())
+  );
 
   // startt polling for changes now
   if (activeEditor) {
